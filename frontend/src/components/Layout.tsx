@@ -9,6 +9,8 @@ const navItems = [
   { to: "/heroes", label: "Heroes", icon: "⚔️" },
 ];
 
+const apiBase = import.meta.env.VITE_API_BASE || "/api";
+
 export default function Layout() {
   const [me, setMe] = useState<AuthMe | null>(null);
   const [query, setQuery] = useState("");
@@ -99,7 +101,7 @@ export default function Layout() {
                 </button>
               )}
               <a
-                href="/api/auth/logout"
+                href={`${apiBase}/auth/logout`}
                 className="text-xs text-text-muted hover:text-white"
               >
                 Logout
@@ -107,7 +109,7 @@ export default function Layout() {
             </div>
           ) : (
             <a
-              href="/api/auth/steam/login"
+              href={`${apiBase}/auth/steam/login`}
               className="flex items-center gap-2 bg-[#171a21] hover:bg-[#1f2330] border border-white/10 px-3 py-1.5 rounded-lg text-sm"
             >
               <img
