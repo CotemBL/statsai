@@ -77,7 +77,11 @@ export class SteamIdGrabber {
       players: state.players,
     }
 
-    await this.send(payload, matchKey)
+    try {
+      await this.send(payload, matchKey)
+    } catch {
+      // fire-and-forget: error already recorded in status via send()
+    }
   }
 
   async sendOnce(state: GSIMatchState | null): Promise<{ ok: boolean; error?: string | null }> {
@@ -120,14 +124,16 @@ export class SteamIdGrabber {
         lastMatchId: matchKey === '__no_match__' || matchKey === '__manual__' ? null : matchKey,
       }
       console.log(`[Grabber] Отправлено ${payload.steamIds.length} steamid → ${this.targetUrl}`)
+      this.notify()
     } catch (error) {
       this.status = {
         ...this.status,
         lastError: error instanceof Error ? error.message : String(error),
       }
       console.error('[Grabber] Ошибка отправки:', error)
+      this.notify()
+      throw error instanceof Error ? error : new Error(String(error))
     }
-    this.notify()
   }
 
   private notify(): void {
