@@ -4,6 +4,7 @@ import { GSIRawPayload, GSIMatchState } from './types'
 import { parseGSIPayload, extractSteamIds } from './parser'
 
 export type GSIEventCallback = (state: GSIMatchState) => void
+export type GSIRawCallback = (payload: GSIRawPayload) => void
 
 const GSI_PORT = 3001
 
@@ -11,7 +12,9 @@ export class GSIServer {
   private app: express.Application
   private server: http.Server | null = null
   private currentState: GSIMatchState | null = null
+  private lastRawPayload: GSIRawPayload | null = null
   private listeners: GSIEventCallback[] = []
+  private rawListeners: GSIRawCallback[] = []
   private isRunning = false
 
   constructor() {
@@ -22,6 +25,7 @@ export class GSIServer {
     this.app.post('/', (req, res) => {
       try {
         const payload = req.body as GSIRawPayload
+        this.lastRawPayload = payload
         this.currentState = parseGSIPayload(payload)
 
         const steamIds = extractSteamIds(payload)
@@ -30,6 +34,7 @@ export class GSIServer {
         }
 
         this.notifyListeners(this.currentState)
+        this.notifyRawListeners(payload)
         res.status(200).end()
       } catch (error) {
         console.error('[GSI] Ошибка парсинга:', error)
@@ -84,8 +89,20 @@ export class GSIServer {
     this.listeners = this.listeners.filter(l => l !== callback)
   }
 
+  onRawPayload(callback: GSIRawCallback): void {
+    this.rawListeners.push(callback)
+  }
+
+  removeRawListener(callback: GSIRawCallback): void {
+    this.rawListeners = this.rawListeners.filter(l => l !== callback)
+  }
+
   getCurrentState(): GSIMatchState | null {
     return this.currentState
+  }
+
+  getLastRawPayload(): GSIRawPayload | null {
+    return this.lastRawPayload
   }
 
   getIsRunning(): boolean {
@@ -98,6 +115,16 @@ export class GSIServer {
         listener(state)
       } catch (error) {
         console.error('[GSI] Ошибка в listener:', error)
+      }
+    }
+  }
+
+  private notifyRawListeners(payload: GSIRawPayload): void {
+    for (const listener of this.rawListeners) {
+      try {
+        listener(payload)
+      } catch (error) {
+        console.error('[GSI] Ошибка в raw listener:', error)
       }
     }
   }
