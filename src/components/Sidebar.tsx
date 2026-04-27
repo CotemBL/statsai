@@ -1,6 +1,6 @@
 import React from 'react'
 
-export type PanelView = 'dashboard' | 'players' | 'settings'
+export type PanelView = 'launcher' | 'dashboard' | 'players' | 'settings'
 
 interface SidebarProps {
   activeView: PanelView
@@ -80,6 +80,7 @@ const styles: Record<string, React.CSSProperties> = {
 }
 
 const menuItems: { id: PanelView; label: string; icon: string }[] = [
+  { id: 'launcher', label: 'Лаунчер', icon: '▶' },
   { id: 'dashboard', label: 'Панель', icon: '◈' },
   { id: 'players', label: 'Игроки', icon: '◎' },
   { id: 'settings', label: 'Настройки', icon: '⚙' },

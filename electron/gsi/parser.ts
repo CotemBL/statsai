@@ -40,9 +40,15 @@ export function parseGSIPayload(data: GSIRawPayload): GSIMatchState {
     })
   }
 
-  if (data.hero && players.length > 0) {
-    players[0].hero = data.hero.name
-    players[0].level = data.hero.level
+  if (data.hero) {
+    const localSteamId = data.player?.steamid
+    const target = localSteamId
+      ? players.find((p) => p.steamid === localSteamId)
+      : players[0]
+    if (target) {
+      target.hero = data.hero.name
+      target.level = data.hero.level
+    }
   }
 
   return {

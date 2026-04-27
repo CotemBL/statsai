@@ -5,6 +5,7 @@ import { Sidebar, PanelView } from './components/Sidebar'
 import { Dashboard } from './components/Dashboard'
 import { PlayersPanel } from './components/PlayersPanel'
 import { Settings } from './components/Settings'
+import { Launcher } from './components/Launcher'
 
 const styles: Record<string, React.CSSProperties> = {
   app: {
@@ -28,20 +29,27 @@ const styles: Record<string, React.CSSProperties> = {
 const isElectron = typeof window !== 'undefined' && window.electronAPI !== undefined
 
 export const App: React.FC = () => {
-  const [activeView, setActiveView] = useState<PanelView>('dashboard')
+  const [activeView, setActiveView] = useState<PanelView>('launcher')
   const [isConnected, setIsConnected] = useState(false)
   const [matchState, setMatchState] = useState<GSIMatchState | null>(null)
 
   useEffect(() => {
     if (!isElectron) return
+    let cancelled = false
 
     const unsubscribe = window.electronAPI.gsi.onStateUpdate((state: GSIMatchState) => {
-      setMatchState(state)
+      if (!cancelled) setMatchState(state)
     })
 
-    window.electronAPI.gsi.getStatus().then(setIsConnected)
+    window.electronAPI.gsi
+      .getStatus()
+      .then((status) => {
+        if (!cancelled) setIsConnected(status)
+      })
+      .catch(() => undefined)
 
     return () => {
+      cancelled = true
       unsubscribe()
     }
   }, [])
@@ -69,6 +77,8 @@ export const App: React.FC = () => {
 
   const renderContent = () => {
     switch (activeView) {
+      case 'launcher':
+        return <Launcher isConnected={isConnected} />
       case 'dashboard':
         return (
           <Dashboard

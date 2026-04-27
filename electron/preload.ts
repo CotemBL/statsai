@@ -1,23 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
-export interface ElectronAPI {
-  gsi: {
-    start: () => Promise<void>
-    stop: () => Promise<void>
-    getState: () => Promise<unknown>
-    getStatus: () => Promise<boolean>
-    installConfig: () => Promise<{ success: boolean; path: string | null; error: string | null }>
-    installConfigManual: (dotaPath: string) => Promise<{ success: boolean; path: string | null; error: string | null }>
-    isInstalled: () => Promise<boolean>
-    onStateUpdate: (callback: (state: unknown) => void) => () => void
-  }
-  app: {
-    getVersion: () => Promise<string>
-    quit: () => void
-    minimize: () => void
-    maximize: () => void
-  }
-}
+const isOverlayWindow = process.argv.includes('--statsai-overlay')
 
 contextBridge.exposeInMainWorld('electronAPI', {
   gsi: {
@@ -33,6 +16,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.on('gsi:stateUpdate', handler)
       return () => ipcRenderer.removeListener('gsi:stateUpdate', handler)
     },
+    onRawPayload: (callback: (payload: unknown) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, payload: unknown) => callback(payload)
+      ipcRenderer.on('gsi:rawPayload', handler)
+      return () => ipcRenderer.removeListener('gsi:rawPayload', handler)
+    },
   },
   app: {
     getVersion: () => ipcRenderer.invoke('app:getVersion'),
@@ -40,4 +28,41 @@ contextBridge.exposeInMainWorld('electronAPI', {
     minimize: () => ipcRenderer.send('app:minimize'),
     maximize: () => ipcRenderer.send('app:maximize'),
   },
-} satisfies ElectronAPI)
+  mods: {
+    get: () => ipcRenderer.invoke('mods:get'),
+    set: (config: unknown) => ipcRenderer.invoke('mods:set', config),
+    onChange: (callback: (config: unknown) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, config: unknown) => callback(config)
+      ipcRenderer.on('mods:change', handler)
+      return () => ipcRenderer.removeListener('mods:change', handler)
+    },
+  },
+  launcher: {
+    launch: () => ipcRenderer.invoke('launcher:launch'),
+    stop: () => ipcRenderer.invoke('launcher:stop'),
+    isRunning: () => ipcRenderer.invoke('launcher:isRunning'),
+    onStatus: (callback: (running: boolean) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, running: boolean) => callback(running)
+      ipcRenderer.on('launcher:status', handler)
+      return () => ipcRenderer.removeListener('launcher:status', handler)
+    },
+  },
+  overlay: {
+    isOverlayWindow: () => isOverlayWindow,
+    moveBy: (dx: number, dy: number) => ipcRenderer.send('overlay:moveBy', { dx, dy }),
+    setSize: (width: number, height: number) => ipcRenderer.send('overlay:setSize', { width, height }),
+    close: () => ipcRenderer.send('overlay:close'),
+    setIgnoreMouseEvents: (ignore: boolean, forward = true) =>
+      ipcRenderer.send('overlay:setIgnoreMouseEvents', { ignore, forward }),
+    requestState: () => ipcRenderer.invoke('overlay:requestState'),
+    onPush: (callback: (state: unknown) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, state: unknown) => callback(state)
+      ipcRenderer.on('overlay:push', handler)
+      return () => ipcRenderer.removeListener('overlay:push', handler)
+    },
+  },
+  grabber: {
+    getStatus: () => ipcRenderer.invoke('grabber:getStatus'),
+    sendNow: () => ipcRenderer.invoke('grabber:sendNow'),
+  },
+})
